@@ -1,9 +1,19 @@
 ---
 title: "Lab 5: Murder in SQL City"
-author: "Your name here!"
-format: html
+author: "Tillman Erb"
+format: 
+  html:  
+    embed-resources: true
+    code-tools: true
+    toc: true
 editor: source
-embed-resources: true
+code-fold: true
+self-contained: true
+theme: darkly
+execute:
+  echo: true
+  error: true
+  warning: false
 ---
 
 For this lab, you will be joining and filtering related datasets to solve a murder mystery!
@@ -57,6 +67,93 @@ Detective Wickham reaches out to you...
 ```{r}
 #| label: inspecting-crime-scene-report
 
+crime_scene_report
+```
+#### Filtering crime scene data for murders that took place on the given date in the given city
+```{r}
+#| Label: Filtering crime scene
+
+crime_scene_report_filtered <- crime_scene_report |>
+  #Converting to date type
+  mutate(date = ymd(date)) |>
+  filter(date == ymd(20180115),
+         type == 'murder',
+         city == 'SQL City')
+
+#Displaying description
+crime_scene_report_filtered$description
+```
+#### With this information, filtering the 'person' dataset for Northwestern Dr and Franklin Ave
+```{r}
+#| label: Filtering person dataset
+#Finding the id of the first witness
+person |> 
+  filter(address_street_name == 'Northwestern Dr',
+         address_number == max(address_number)
+         )
+
+#Finding the id of the second witness
+person |> 
+  filter(address_street_name == 'Franklin Ave',
+         str_detect(name, "^Annabel")
+         )
+```
+The two witnesses have IDs 16371 and 14887.
+
+#### Checking interviews for these two IDs
+```{r}
+#| label: Filtering interviews
+witness_test <- interview |>
+  filter(person_id %in% c(16371, 14887))
+
+witness_test$transcript
+```
+
+#### Checking licence plates for those that include H42W, matching gender description
+Getting list of licence IDs for later use
+```{r}
+#| label: Filtering licence plates
+licence_id <- drivers_license |>
+  filter(str_detect(plate_number, "H42W"),
+         gender == 'male')
+licence_id <- licence_id$id
+licence_id
+```
+
+#### Filtering gym membership check in times
+Filtering IDs for the one listed in the description
+```{r}
+#| label: Filtering gym checkins
+membership_ids <- get_fit_now_check_in |>
+  mutate(check_in_date = ymd(check_in_date)) |>
+  filter(check_in_date == ymd(20180109),
+         str_detect(membership_id, "^48Z"))
+
+membership_ids <- membership_ids$membership_id
+membership_ids
+```
+
+#### Filtering gym membership for gold, and for the IDs in the list above.
+Getting person_id to filter the person table with 
+```{r}
+#| label: Filtering gym membership
+
+person_ids <- get_fit_now_member |>
+  filter(id %in% membership_ids,
+         membership_status == 'gold')
+
+person_ids <- person_ids$person_id
+person_ids
+```
+
+#### Filtering the person table 
+Finding matching licence ids and person ids from the gym membership list and licence list
+```{r}
+#| label: Final filtering
+
+person |>
+  filter(id %in% person_ids,
+         license_id %in% licence_id)
 ```
 
 
@@ -66,4 +163,4 @@ Hint: Make sure you check for interviews with any suspects!
 
 ## And the final suspect is...
 
-*Put the name of the person responsible for the murder here:*
+*Jeremy Bowers*
